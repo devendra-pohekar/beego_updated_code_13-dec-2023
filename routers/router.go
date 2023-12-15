@@ -23,7 +23,7 @@ func RoutersFunction() {
 			beego.NSRouter("/send_otp_forgot", userController, "post:SendMailForForgotPassword"),
 			beego.NSRouter("/verify_otp_forgot", userController, "post:ForgotPasswordUpdate"),
 			beego.NSRouter("/create_lang_lable", userController, "post:InsertLanguageLables"),
-			beego.NSRouter("/write_ini_file", userController, "post:FetchAllAndWriteInINIFiles"),
+			// beego.NSRouter("/write_ini_file", userController, "post:FetchAllAndWriteInINIFiles"),
 		),
 
 		beego.NSNamespace("/homepage",

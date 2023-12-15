@@ -108,7 +108,7 @@ func (u *UserController) RegisterUser() {
 	}
 	result, _ := models.RegisterUser(user)
 	if result != nil {
-		helpers.ApiSuccessResponse(u.Ctx.ResponseWriter, "", "Register Successfully User Please Login Now", "", "")
+		helpers.ApiSuccessResponse(u.Ctx.ResponseWriter, "", "Register Successfully User Please Login Now", "")
 		return
 	}
 	helpers.ApiFailedResponse(u.Ctx.ResponseWriter, "Please Try Again")
@@ -146,7 +146,7 @@ func (c *UserController) SendMailForm() {
 	if email == requestData.Email && is_verified == 0 {
 		result, _ := helpers.SendOTpOnMail(requestData.Email, user_first_name)
 		models.FirstOTPUpdate(email, user_first_name, result, user_id)
-		helpers.ApiSuccessResponse(c.Ctx.ResponseWriter, "", "Verification Mail Send On The Given User Email Address ,Please verified first", "", "")
+		helpers.ApiSuccessResponse(c.Ctx.ResponseWriter, "", "Verification Mail Send On The Given User Email Address ,Please verified first", "")
 		return
 	}
 
@@ -180,7 +180,7 @@ func (c *UserController) VerifyEmail() {
 	user_email, user_id := models.VerifyOTP(requestData.OTP)
 	if user_email != "" && user_id != 0 {
 		models.UpdateVerifiedStatus(user_email, user_id)
-		helpers.ApiSuccessResponse(c.Ctx.ResponseWriter, "", "User Verified Successfully ", "", "")
+		helpers.ApiSuccessResponse(c.Ctx.ResponseWriter, "", "User Verified Successfully ", "")
 	}
 
 }
@@ -198,14 +198,12 @@ func (c *UserController) SendMailForForgotPassword() {
 		helpers.ApiFailedResponse(c.Ctx.ResponseWriter, "Parsing Data Error")
 		return
 	}
-
 	json.Unmarshal(c.Ctx.Input.RequestBody, &requestData)
-
 	email, user_first_name, is_verified, user_id := models.VerifyEmail(requestData.Email)
 	if email == requestData.Email && is_verified == 1 {
 		result, _ := helpers.SendOTpOnMail(requestData.Email, user_first_name)
 		models.FirstOTPUpdate(email, user_first_name, result, user_id)
-		helpers.ApiSuccessResponse(c.Ctx.ResponseWriter, email, "OTP Verification Mail Send On The Register User Email Address ,Please verified OTP", "", "")
+		helpers.ApiSuccessResponse(c.Ctx.ResponseWriter, email, "OTP Verification Mail Send On The Register User Email Address ,Please verified OTP", "")
 		return
 	}
 
@@ -234,7 +232,7 @@ func (c *UserController) ForgotPasswordUpdate() {
 	user_email, user_id := models.VerifyOTP(requestData.OTP)
 	if user_email != "" && user_id != 0 {
 		models.UpdatePassword(user_email, user_id, requestData.NewPassword)
-		helpers.ApiSuccessResponse(c.Ctx.ResponseWriter, "", "Password Change Successfully ", "", "")
+		helpers.ApiSuccessResponse(c.Ctx.ResponseWriter, "", "Password Change Successfully ", "")
 		return
 	}
 	helpers.ApiFailedResponse(c.Ctx.ResponseWriter, "OTP IS Expired PLEASE GO ON FORGOT PASSWORD SECTION")
@@ -253,7 +251,7 @@ func (u *UserController) LogoutUser() {
 		helpers.ApiFailedResponse(u.Ctx.ResponseWriter, "Not Logout User")
 		return
 	}
-	helpers.ApiSuccessResponse(u.Ctx.ResponseWriter, "", "User Logout Successfully", "", "")
+	helpers.ApiSuccessResponse(u.Ctx.ResponseWriter, "", "User Logout Successfully", "")
 }
 
 func (u *UserController) InsertLanguageLables() {
@@ -271,7 +269,7 @@ func (u *UserController) InsertLanguageLables() {
 	}
 	result, _ := models.InsertLanguageLabels(langLables)
 	if result != "" {
-		helpers.ApiSuccessResponse(u.Ctx.ResponseWriter, result, " Successfully Created Language Lable", "", "")
+		helpers.ApiSuccessResponse(u.Ctx.ResponseWriter, result, " Successfully Created Language Lable", "")
 		return
 	}
 
@@ -282,26 +280,16 @@ func (u *UserController) FetchAllAndWriteInINIFiles() {
 	langugeLables, _ := models.FetchAllLabels()
 	languageLangLables, _ := models.FetchAllDefaultlables()
 	langLangLables, done := languageLangLables.([]orm.Params)
-
 	if !done {
 		log.Fatal("Failed to convert 'results' to []orm.Params")
 	}
 	langResult, _ := helpers.ConvertToMapSlice(langLangLables)
-	langResponse := helpers.CreateINIFiles(langResult)
-	if langResponse == nil {
-		log.Print(langResponse)
-	}
+	helpers.CreateINIFiles(langResult)
 	ormParams, ok := langugeLables.([]orm.Params)
 	if !ok {
 		log.Fatal("Failed to convert 'results' to []orm.Params")
 	}
-
 	res, _ := helpers.ConvertToMapSlice(ormParams)
-	res_result := helpers.CreateINIFiles(res)
+	helpers.CreateINIFiles(res)
 
-	if langugeLables != "" {
-		helpers.ApiSuccessResponse(u.Ctx.ResponseWriter, res_result, " Successfully Found Language Lable", "", "")
-		return
-	}
-	helpers.ApiFailedResponse(u.Ctx.ResponseWriter, "Not Found Try Again !")
 }

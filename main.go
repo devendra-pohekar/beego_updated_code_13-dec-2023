@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crud/controllers"
 	"crud/routers"
 
 	_ "github.com/lib/pq"
@@ -8,13 +9,17 @@ import (
 	beego "github.com/beego/beego/v2/server/web"
 )
 
+func init() {
+	languageLablesFunc := controllers.UserController{}
+	languageLablesFunc.FetchAllAndWriteInINIFiles()
+}
+
 func main() {
 
 	if beego.BConfig.RunMode == "dev" {
 		beego.BConfig.WebConfig.DirectoryIndex = true
 		beego.BConfig.WebConfig.StaticDir["/swagger"] = "swagger"
 	}
-
 	routers.RoutersFunction()
 
 	beego.Run()

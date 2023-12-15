@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"math/rand"
 	"mime/multipart"
 	"net/http"
@@ -989,47 +990,61 @@ var defaultLang = "en-US"
 
 func Init() {
 	web.InsertFilter("*", web.BeforeRouter, func(ctx *context.Context) {
-		lang := ctx.Input.Query("lang")
-		if lang == "" {
-			lang = getLanguageFromCookie(ctx)
-		}
+		lang := getLanguageFromMultipleSources(ctx)
 		SetLanguage(ctx, lang)
 	})
 	web.InsertFilter("*", web.AfterExec, func(ctx *context.Context) {
 
 	})
+}
 
+func getLanguageFromMultipleSources(ctx *context.Context) string {
+	if lang := ctx.Input.Query("lang"); lang != "" && isValidLanguage(lang) {
+		return lang
+	}
+	if lang := ctx.Input.Header("lang"); lang != "" && isValidLanguage(lang) {
+		return lang
+	}
+	if lang := ctx.Input.Cookie("lang"); lang != "" && isValidLanguage(lang) {
+		return lang
+	}
+	return "en-US"
+}
+
+func isValidLanguage(lang string) bool {
+	lang = strings.ToUpper(lang)
+	allowedLanguages := map[string]bool{"En-US": true, "EN-GB": true, "HI-IN": true}
+	return allowedLanguages[lang]
 }
 
 func SetLanguage(ctx *context.Context, lang string) {
 	ctx.Input.SetData("lang", lang)
 
-	err := i18n.SetMessageWithDesc(lang, "conf/locale_"+lang+".ini", "conf/locale_"+lang+".ini")
+	err := i18n.SetMessageWithDesc(lang, "conf/language/locale_"+lang+".ini", "conf/language/locale_"+lang+".ini")
 	if err != nil {
 		log.Print(err)
 	}
+	ctx.SetCookie("lang", lang, 24*60*60, "/") // cookie to expire in 24 hours
+
 	defaultLang = lang
 }
 
-func Translate(ctx *context.Context, langKey, key string) string {
+func Translate(ctx *context.Context, key string) string {
+	langKey := getLanguageFromMultipleSources(ctx)
+	langTrans := strings.Split(langKey, "-")
+	langTrans[0] = strings.ToLower(langTrans[0])
+	if len(langTrans) > 1 {
+		langTrans[1] = strings.ToUpper(langTrans[1])
+	}
+	langKey = strings.Join(langTrans, "-")
 	SetLanguage(ctx, langKey)
 	return i18n.Tr(defaultLang, key)
 }
 
-func getLanguageFromCookie(ctx *context.Context) string {
-	lang := ctx.Input.Cookie("lang")
-	if lang == "" {
-		lang = "en-US"
-	}
-	return lang
-}
+func TranslateMessage(ctx *context.Context, section, sectionMessage string) string {
 
-func TranslateMessage(ctx *context.Context, langKey, section, sectionMessage string) string {
-	if langKey == "" {
-		langKey = "en-US"
-	}
 	translationKey := fmt.Sprintf("%s.%s", section, sectionMessage)
-	return Translate(ctx, langKey, translationKey)
+	return Translate(ctx, translationKey)
 }
 
 /*CREATE INI FILE ACCORDING TO LANGUAGE CODE  IN DIRECTORY OF [CONF/LANGUAGE]/*/
@@ -1065,7 +1080,7 @@ func CreateINIFiles(data []map[string]string) error {
 			return err
 		}
 
-		log.Printf("INI file created successfully: %s", fileName)
+		// log.Printf("INI file created successfully: %s", fileName)
 	}
 
 	return nil
@@ -1144,3 +1159,73 @@ func FormatDateTime(inputDateTime string, formatType ...string) (map[string]stri
 }
 
 /*END FORMATE DATE TIME FUNCTION*/
+
+func CreateStruct(structName string, fields map[string]string) string {
+	var structDefinition strings.Builder
+	var jsonTags strings.Builder
+	var formTags strings.Builder
+
+	structDefinition.WriteString(fmt.Sprintf("type %s struct {\n", structName))
+
+	for fieldName, fieldType := range fields {
+		structDefinition.WriteString(fmt.Sprintf("\t%s\t%s", fieldName, fieldType))
+		jsonTags.WriteString(fmt.Sprintf(`%s:"%s" `, fieldName, fieldName))
+
+		formTags.WriteString(fmt.Sprintf(`%s:"%s" `, fieldName, fieldName))
+
+		if fieldType == "string" {
+			formTags.WriteString(`validate:"min=3" `)
+		}
+
+		structDefinition.WriteString(fmt.Sprintf("`json:\"%s\" form:\"%s\"`\n", jsonTags.String(), formTags.String()))
+		jsonTags.Reset()
+		formTags.Reset()
+	}
+
+	structDefinition.WriteString("}\n")
+
+	return structDefinition.String()
+}
+
+/*PAGINATION FUNCTION PROVIDE ALL DETAILS LIKE AS  CURRENT PAGE,LAST PAGE AND TOTAL ROWS AND TOTAL PAGES IT ALSO */
+func Pagination(current_page, pageSize int, tableName string) (map[string]interface{}, error) {
+	db := orm.NewOrm()
+	var totalRows int
+	err := db.Raw(`SELECT COUNT(*) as totalRows FROM ` + tableName).QueryRow(&totalRows)
+	if err != nil {
+		return nil, err
+	}
+
+	totalPages := int(math.Ceil(float64(totalRows) / float64(pageSize)))
+
+	lastPageNumber := totalPages
+	if lastPageNumber == 0 {
+		lastPageNumber = 1
+	}
+
+	previousPageNumber := current_page - 1
+	if previousPageNumber < 1 {
+		previousPageNumber = 0
+	}
+
+	nextPageNumber := current_page + 1
+	if nextPageNumber > totalPages {
+		nextPageNumber = totalPages
+	}
+
+	pagination_data := map[string]interface{}{
+		"CurrentPage":   current_page,
+		"PreviousPage":  previousPageNumber,
+		"NextPage":      nextPageNumber,
+		"PerPageRecord": pageSize,
+		"TotalRows":     totalRows,
+		"TotalPages":    totalPages,
+		"LastPage":      lastPageNumber,
+	}
+	if current_page > lastPageNumber {
+		pagination_data["pageOpen_error"] = 1
+		pagination_data["current_page"] = current_page
+		pagination_data["last_page"] = lastPageNumber
+	}
+	return pagination_data, nil
+}

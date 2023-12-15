@@ -85,16 +85,7 @@ VALUES
 
 -- Create a function to be used in the trigger
 CREATE
-OR REPLACE FUNCTION move_to_destination() RETURNS TRIGGER AS $ $ BEGIN -- Insert the deleted row into the destination table
-INSERT INTO
-    destination_table (id, column1, column2)
-VALUES
-    (OLD.id, OLD.column1, OLD.column2);
-
--- You can add additional logic or logging here if needed
-RETURN OLD;
-
-END;
+OR REPLACE FUNCTION move_to_destination()Indexes
 
 $ $ LANGUAGE plpgsql;
 
@@ -104,41 +95,61 @@ AFTER
     DELETE ON source_table FOR EACH ROW EXECUTE FUNCTION move_to_destination();
 
 /*Trigger After Delete ON home_pages_setting_table*/
-CREATE
-OR REPLACE FUNCTION move_to_backup_hpst() RETURNS TRIGGER AS $ $ BEGIN
+CREATE OR REPLACE FUNCTION move_to_backup_hpst() RETURNS TRIGGER AS $ $ BEGIN
 INSERT INTO
-    home_pages_setting_table(
-        page_setting_id,
-        section,
-        data_type,
-        unique_code,
-        setting_data,
-        created_date,
-        updated_date,
-        created_by,
-        updated_by,
-        sample
-    )
-VALUES
-(
-        OLD.page_setting_id,
-        OLD.section,
-        data_type,
-        OLD.unique_code,
-        OLD.setting_data,
-        OLD.created_date,
-        OLD.updated_date,
-        OLD.created_by,
-        OLD.updated_by,
-        OLD.sample
-    );
-
+    backup_after_delete_hpst(
+    page_setting_id,
+    section,
+    data_type,
+    unique_code,
+    setting_data,
+    created_date,
+    updated_date,
+    created_by,
+    updated_by,
+    sample)VALUES(OLD.page_setting_id,
+                    OLD.section,
+                    OLD.data_type,
+                    OLD.unique_code,
+                    OLD.setting_data,
+                    OLD.created_date,
+                    OLD.updated_date,
+                    OLD.created_by,
+                    OLD.updated_by,
+                    OLD.sample );
 RETURN OLD;
-
 END;
-
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER after_delete_hpst
 AFTER DELETE ON home_pages_setting_table
 FOR EACH ROW EXECUTE FUNCTION move_to_backup_hpst();
+
+
+
+
+
+CREATE OR REPLACE FUNCTION insert_update_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+       IF TG_OP = 'INSERT' THEN
+            INSERT INTO backup_after_delete_hpst(page_setting_id,section,data_type,unique_code,setting_data,created_date,updated_date,created_by,updated_by,sample)
+            VALUES(NEW.page_setting_id, NEW.section, NEW.data_type, NEW.unique_code, NEW.setting_data, NEW.created_date, NEW.updated_date, NEW.created_by, NEW.updated_by, NEW.sample);
+            RAISE NOTICE 'A new row was inserted with id % and copied to backup_after_delete_hpst with source_id %', NEW.page_setting_id, NEW.page_setting_id;
+    
+        IF TG_OP = 'UPDATE' THEN
+            INSERT INTO backup_after_delete_hpst(page_setting_id,section,data_type,unique_code,setting_data,created_date,updated_date,created_by,updated_by,sample)
+            VALUES(NEW.page_setting_id,NEW.section,NEW.data_type,NEW.unique_code,NEW.setting_data,NEW.created_date,NEW.updated_date,NEW.created_by,NEW.updated_by,NEW.sample);
+            RAISE NOTICE 'A new row was inserted with id % and copied to backup_after_delete_hpst with source_id %', NEW.page_setting_id, NEW.page_setting_id;
+     
+        IF TG_OP = 'DELETE' THEN
+            INSERT INTO backup_after_delete_hpst(page_setting_id,section,data_type,unique_code,setting_data,created_date,updated_date,created_by,updated_by,sample)
+            VALUES(NEW.page_setting_id,NEW.section,NEW.data_type,NEW.unique_code,NEW.setting_data,NEW.created_date,NEW.updated_date,NEW.created_by,NEW.updated_by,NEW.sample);
+            RAISE NOTICE 'A new row was inserted with id % and copied to backup_after_delete_hpst with source_id %', NEW.page_setting_id, NEW.page_setting_id;
+   
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER insert_update_delete_trigger()
+AFTER INSERT OR UPDATE OR DELETE ON home_pages_setting_table
+FOR EACH ROW EXECUTE FUNCTION insert_update_delete()

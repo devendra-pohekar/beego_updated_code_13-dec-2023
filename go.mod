@@ -13,7 +13,14 @@ require (
 	golang.org/x/crypto v0.16.0
 )
 
-require github.com/Unknwon/goconfig v1.0.0 // indirect
+require (
+	ariga.io/atlas-go-sdk v0.2.3 // indirect
+	ariga.io/atlas-provider-beego v0.0.0-20230710082826-ea677a0253a5 // indirect
+	github.com/Unknwon/goconfig v1.0.0 // indirect
+	github.com/alecthomas/kong v0.8.1 // indirect
+	golang.org/x/mod v0.14.0 // indirect
+	golang.org/x/tools v0.16.1 // indirect
+)
 
 require (
 	github.com/beego/i18n v0.0.0-20161101132742-e9308947f407

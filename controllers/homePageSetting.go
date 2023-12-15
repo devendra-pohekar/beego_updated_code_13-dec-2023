@@ -46,7 +46,7 @@ func (u *HomeSettingController) RegisterSettings() {
 		return
 	}
 	json.Unmarshal(u.Ctx.Input.RequestBody, &settings)
-	lan_key := "hi-IN"
+
 	data_types := strings.ToUpper(settings.DataType)
 	// uploadDir := os.Getenv("uploadHomePageImages")
 	uploadDir := "uploads/Home/files/images"
@@ -62,7 +62,7 @@ func (u *HomeSettingController) RegisterSettings() {
 
 			section_failed_msg := "file_failed"
 			section := "home_page_setting_failed_message_section"
-			message_failed := helpers.TranslateMessage(u.Ctx, lan_key, section, section_failed_msg)
+			message_failed := helpers.TranslateMessage(u.Ctx, section, section_failed_msg)
 
 			helpers.ApiFailedResponse(u.Ctx.ResponseWriter, message_failed)
 			return
@@ -83,9 +83,8 @@ func (u *HomeSettingController) RegisterSettings() {
 
 		section_success_msg := "register"
 		section := "home_page_setting_success_message_section"
-		message_success := helpers.TranslateMessage(u.Ctx, lan_key, section, section_success_msg)
-
-		helpers.ApiSuccessResponse(u.Ctx.ResponseWriter, "", message_success, "", "")
+		message_success := helpers.TranslateMessage(u.Ctx, section, section_success_msg)
+		helpers.ApiSuccessResponse(u.Ctx.ResponseWriter, "", message_success, "")
 		return
 	}
 
@@ -116,10 +115,10 @@ func (u *HomeSettingController) UpdateSettings() {
 		helpers.ApiFailedResponse(u.Ctx.ResponseWriter, "Parsing Data Error")
 		return
 	}
-	lan_key := ""
+
 	section_message := "update"
 	section := "home_page_setting_success_message_section"
-	message := helpers.TranslateMessage(u.Ctx, lan_key, section, section_message)
+	message := helpers.TranslateMessage(u.Ctx, section, section_message)
 
 	json.Unmarshal(u.Ctx.Input.RequestBody, &settings)
 	data_types := strings.ToUpper(settings.DataType)
@@ -154,7 +153,7 @@ func (u *HomeSettingController) UpdateSettings() {
 	result, _ := models.UpdateSetting(settings, filePath, userID.(float64))
 
 	if result != 0 {
-		helpers.ApiSuccessResponse(u.Ctx.ResponseWriter, "", message, "", "")
+		helpers.ApiSuccessResponse(u.Ctx.ResponseWriter, "", message, "")
 		return
 	}
 
@@ -181,15 +180,20 @@ func (u *HomeSettingController) FetchSettings() {
 		return
 	}
 	json.Unmarshal(u.Ctx.Input.RequestBody, &search)
-
-	lan_key := "hi-IN"
-	result, _ := models.FetchSetting()
+	result, pagination_data, _ := models.FetchSettingPagination(search.OpenPage, search.PageSize)
+	if pagination_data["pageOpen_error"] == 1 {
+		current := pagination_data["current_page"]
+		last := pagination_data["last_page"]
+		message := fmt.Sprintf("PAGE NUMBER %d IS NOT EXISTS , LAST PAGE NUMBER IS %d", current, last)
+		helpers.ApiFailedResponse(u.Ctx.ResponseWriter, message)
+		return
+	}
 
 	if result != nil {
 		section_message := "found"
 		section := "home_page_setting_success_message_section"
-		message := helpers.TranslateMessage(u.Ctx, lan_key, section, section_message)
-		helpers.ApiSuccessResponse(u.Ctx.ResponseWriter, result, message, "", "")
+		message := helpers.TranslateMessage(u.Ctx, section, section_message)
+		helpers.ApiSuccessResponse(u.Ctx.ResponseWriter, result, message, pagination_data)
 		return
 	}
 	helpers.ApiFailedResponse(u.Ctx.ResponseWriter, "Not Found Data Please Try Again")
@@ -203,10 +207,9 @@ func (u *HomeSettingController) DeleteSetting() {
 	// 	return
 	// }
 
-	lan_key := ""
 	section_message := "delete"
 	section := "home_page_setting_success_message_section"
-	message := helpers.TranslateMessage(u.Ctx, lan_key, section, section_message)
+	message := helpers.TranslateMessage(u.Ctx, section, section_message)
 
 	var home_settings requestStruct.HomeSeetingDelete
 	if err := u.ParseForm(&home_settings); err != nil {
@@ -216,7 +219,7 @@ func (u *HomeSettingController) DeleteSetting() {
 	json.Unmarshal(u.Ctx.Input.RequestBody, &home_settings)
 	result := models.HomePageSettingExistsDelete(home_settings)
 	if result != 0 {
-		helpers.ApiSuccessResponse(u.Ctx.ResponseWriter, "", message, "", "")
+		helpers.ApiSuccessResponse(u.Ctx.ResponseWriter, "", message, "")
 		return
 	}
 
@@ -263,7 +266,7 @@ func (c *HomeSettingController) ExportFile() {
 			helpers.ApiFailedResponse(c.Ctx.ResponseWriter, "File Not Create ! Try Again")
 			return
 		}
-		helpers.ApiSuccessResponse(c.Ctx.ResponseWriter, res_result, "successfully Created file ", "", "")
+		helpers.ApiSuccessResponse(c.Ctx.ResponseWriter, res_result, "successfully Created file ", "")
 		return
 	}
 
@@ -310,23 +313,26 @@ func (c *HomeSettingController) ImportFile() {
 			return
 		}
 		result, update_id, _ := models.RegisterSettingBatchsss(requestStruct.HomeSeetingInsert{}, 35, filePath, allRows)
-		if result == nil || update_id == nil {
-			helpers.ApiSuccessResponse(c.Ctx.ResponseWriter, "", "File Imported Successfully", "", "")
+		if (len(result) > 0 && len(update_id) == 0) || (len(result) > 0 && len(update_id) > 0) || (len(result) == 0 && len(update_id) > 0) {
+			helpers.ApiSuccessResponse(c.Ctx.ResponseWriter, "", "File Imported Successfully", "")
 			return
 		}
 
 		helpers.ApiFailedResponse(c.Ctx.ResponseWriter, "File Not Imported Please Try Again")
 
 	case strings.HasSuffix(filePath, ".csv"):
+
 		allRows, err = helpers.ReadCSVFile(filePath)
+
 		if err != nil {
 			fmt.Println("Error reading CSV file:", err)
 			helpers.ApiFailedResponse(c.Ctx.ResponseWriter, "Error reading CSV file")
 			return
 		}
+
 		result, update_id, _ := models.RegisterSettingBatchsss(requestStruct.HomeSeetingInsert{}, 100, filePath, allRows)
 		if result != nil || update_id != nil {
-			helpers.ApiSuccessResponse(c.Ctx.ResponseWriter, "", "File Imported Successfully", "", "")
+			helpers.ApiSuccessResponse(c.Ctx.ResponseWriter, "", "File Imported Successfully", "")
 			return
 		}
 
