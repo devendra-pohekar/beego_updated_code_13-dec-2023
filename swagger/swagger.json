@@ -58,6 +58,20 @@
                 "operationId": "HomeSettingController.After Login User Can Fetch Data Home Page settings",
                 "parameters": [
                     {
+                        "in": "formData",
+                        "name": "open_page",
+                        "description": "if you want to open specific page than give page number",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    {
+                        "in": "formData",
+                        "name": "page_size",
+                        "description": "how much data you want to show at a time default it will give 10 records",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    {
                         "in": "header",
                         "name": "Authorization",
                         "description": "Bearer YourAccessToken",

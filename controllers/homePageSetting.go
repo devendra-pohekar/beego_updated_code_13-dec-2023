@@ -163,6 +163,8 @@ func (u *HomeSettingController) UpdateSettings() {
 // FetchSettings
 // @Title After Login User Can Fetch Data Home Page settings
 // @Description In this function after login user  can Fetch Data Home page settings
+// @Param open_page formData int false "if you want to open specific page than give page number"
+// @Param page_size formData int false "how much data you want to show at a time default it will give 10 records"
 // @Param   Authorization   header  string  true  "Bearer YourAccessToken"
 // @Success 200 {object} models.HomePagesSettingTable
 // @Failure 403
@@ -180,7 +182,17 @@ func (u *HomeSettingController) FetchSettings() {
 		return
 	}
 	json.Unmarshal(u.Ctx.Input.RequestBody, &search)
-	result, pagination_data, _ := models.FetchSettingPagination(search.OpenPage, search.PageSize)
+	tableName := "home_pages_setting_table"
+	query := `
+	SELECT hpst.section, hpst.data_type, hpst.setting_data, hpst.created_date, hpst.updated_date,
+	concat(umt.first_name,' ',umt.last_name) as created_by
+	FROM home_pages_setting_table as hpst
+	LEFT JOIN user_master_table as umt ON umt.user_id = hpst.created_by
+	ORDER BY hpst.created_date DESC
+	LIMIT ? OFFSET ?
+`
+
+	result, pagination_data, _ := models.FetchSettingPaginations(search.OpenPage, search.PageSize, tableName, query)
 	if pagination_data["pageOpen_error"] == 1 {
 		current := pagination_data["current_page"]
 		last := pagination_data["last_page"]

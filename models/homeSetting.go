@@ -134,6 +134,7 @@ func FetchSettingPagination(current_page, pageSize int) ([]orm.Params, map[strin
 	if pageSize <= 0 {
 		pageSize = 10
 	}
+
 	offset := (current_page - 1) * pageSize
 
 	var homeResponse []orm.Params
@@ -156,75 +157,6 @@ func FetchSettingPagination(current_page, pageSize int) ([]orm.Params, map[strin
 	}
 	return homeResponse, pagination_data, nil
 }
-
-// func FetchSettingPagination(current_page, pageSize int) ([]orm.Params, map[string]interface{}, error) {
-// 	db := orm.NewOrm()
-// 	if current_page <= 0 {
-// 		current_page = 1
-// 	}
-// 	if pageSize <= 0 {
-// 		pageSize = 20
-// 	}
-// 	offset := (current_page - 1) * pageSize
-
-// 	var homeResponse []orm.Params
-// 	_, err := db.Raw(`
-// 		SELECT hpst.section, hpst.data_type, hpst.setting_data, hpst.created_date, hpst.updated_date,
-// 		concat(umt.first_name,' ',umt.last_name) as created_by
-// 		FROM home_pages_setting_table as hpst
-// 		LEFT JOIN user_master_table as umt ON umt.user_id = hpst.created_by
-// 		ORDER BY hpst.created_date DESC
-// 		LIMIT ? OFFSET ?
-// 	`, pageSize, offset).Values(&homeResponse)
-
-// 	if err != nil {
-// 		return nil, nil, err
-// 	}
-
-// 	// Count the total number of records (ignoring pagination)
-// 	var totalCount int
-// 	db.Raw(`
-// 		SELECT COUNT(*) as total_count
-// 		FROM home_pages_setting_table as hpst
-// 	`).QueryRow(&totalCount)
-
-// 	// Calculate total pages
-// 	totalPages := int(math.Ceil(float64(totalCount) / float64(pageSize)))
-
-// 	pagination_data := map[string]interface{}{
-// 		"CurrentPage":   current_page,
-// 		"PerPageRecord": pageSize,
-// 		"TotalRows":     totalCount,
-// 		"TotalPages":    totalPages,
-// 	}
-
-// 	return homeResponse, pagination_data, nil
-// }
-
-// func FetchSettingPagination1(page, pageSize int) (interface{}, error) {
-// 	db := orm.NewOrm()
-// 	offset := (page - 1) * pageSize
-
-// 	var homeResponse []orm.Params
-// 	_, err := db.Raw(`
-// 		SELECT hpst.section, hpst.data_type, hpst.setting_data, hpst.created_date, hpst.updated_date,
-// 		concat(umt.first_name,' ',umt.last_name) as created_by
-// 		FROM home_pages_setting_table as hpst
-// 		LEFT JOIN user_master_table as umt ON umt.user_id = hpst.created_by
-// 		ORDER BY hpst.created_date DESC
-// 		LIMIT ? OFFSET ?
-// 	`, pageSize, offset).Values(&homeResponse)
-
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	if len(homeResponse) == 0 {
-// 		return "Not Found Cars", nil
-// 	}
-
-// 	return homeResponse, nil
-// }
 
 func FetchSetting() (interface{}, error) {
 	db := orm.NewOrm()
@@ -892,4 +824,38 @@ func RegisterSettingBatchsss(c requestStruct.HomeSeetingInsert, user_id float64,
 	helpers.RemoveFileByPath(filePath)
 
 	return insertIDs, updateIDs, nil
+}
+
+// "home_pages_setting_table"
+
+// `
+// 	SELECT hpst.section, hpst.data_type, hpst.setting_data, hpst.created_date, hpst.updated_date,
+// 	concat(umt.first_name,' ',umt.last_name) as created_by
+// 	FROM home_pages_setting_table as hpst
+// 	LEFT JOIN user_master_table as umt ON umt.user_id = hpst.created_by
+// 	ORDER BY hpst.created_date DESC
+// 	LIMIT ? OFFSET ?
+// `
+
+func FetchSettingPaginations(current_page, pageSize int, tableName, query string) ([]orm.Params, map[string]interface{}, error) {
+	db := orm.NewOrm()
+	if current_page <= 0 {
+		current_page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 10
+	}
+	offset := (current_page - 1) * pageSize
+
+	var homeResponse []orm.Params
+	_, err := db.Raw(query, pageSize, offset).Values(&homeResponse)
+
+	if err != nil {
+		return nil, nil, err
+	}
+	pagination_data, pagination_err := helpers.Pagination(current_page, pageSize, tableName)
+	if pagination_err != nil {
+		return nil, pagination_data, nil
+	}
+	return homeResponse, pagination_data, nil
 }
